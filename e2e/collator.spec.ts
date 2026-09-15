@@ -81,11 +81,23 @@ test('超限时同时列出两侧首个违规行号并清空旧结果', async ({
   await expect(page.locator('[data-testid="distance"]')).toHaveText('1');
 });
 
-test('行数超限时提示上限并清空结果', async ({ page }) => {
+test('行数超限时提示首个违规行号 2001 并清空结果', async ({ page }) => {
   const many = Array.from({ length: 2001 }, (_, i) => `L${i}`).join('\n');
   await page.locator('[data-testid="old-input"]').fill(many);
   await page.locator('[data-testid="new-input"]').fill('L0');
 
   await expect(page.locator('[data-testid="old-error"]')).toContainText('旧版第 2001 行起超过 2000 行');
+  await expect(page.locator('[data-testid="stats"]')).toHaveCount(0);
+});
+
+test('超过 2000 行且更后的行又超长时，仍指向第 2001 行而非后面的超长行', async ({ page }) => {
+  const lines = Array.from({ length: 2005 }, (_, i) => `L${i}`);
+  lines[2004] = '字'.repeat(501); // 第 2005 行超长
+  await page.locator('[data-testid="old-input"]').fill(lines.join('\n'));
+  await page.locator('[data-testid="new-input"]').fill('L0');
+
+  // 必须报第 2001 行（行数超限），而不是第 2005 行（超长）
+  await expect(page.locator('[data-testid="old-error"]')).toContainText('旧版第 2001 行起超过 2000 行');
+  await expect(page.locator('[data-testid="old-error"]')).not.toContainText('第 2005 行');
   await expect(page.locator('[data-testid="stats"]')).toHaveCount(0);
 });

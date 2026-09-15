@@ -2,7 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 30_000,
+  timeout: 60_000,
+  // 大输入用例（2000+ 行）在受限容器中并行启动多个 Chromium 易超时，固定 2 路并发
+  workers: 2,
   fullyParallel: true,
   reporter: [['list']],
   use: {

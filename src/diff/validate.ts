@@ -17,14 +17,17 @@ export interface ValidationResult {
 }
 
 function checkSide(lines: string[]): SideViolation | null {
-  for (let i = 0; i < lines.length; i++) {
+  // 按行号顺序报告首个违规：
+  // 先在允许的前 MAX_LINES 行内查找首个超长行；
+  // 前 2000 行都合法但总行数更多时，首个违规恒为第 2001 行（行数超限），
+  // 不会跳到第 2001 行之后才出现的超长行。
+  const scanLimit = Math.min(lines.length, MAX_LINES);
+  for (let i = 0; i < scanLimit; i++) {
     if (utf16Length(lines[i]) > MAX_CODE_UNITS) {
-      // 超长行优先于行数超限报告（取最先遇到的违规）
       return { lineNo: i + 1, tooLong: true, tooMany: false };
     }
   }
   if (lines.length > MAX_LINES) {
-    // 第 2001 行起即为首个违规行
     return { lineNo: MAX_LINES + 1, tooLong: false, tooMany: true };
   }
   return null;

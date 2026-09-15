@@ -76,15 +76,35 @@ describe('validate 限额', () => {
     expect(r.new).toEqual({ lineNo: 1, tooLong: true, tooMany: false });
   });
 
-  it('行数超限给出 tooMany 与首个违规行号，且超长行优先报告', () => {
+  it('行数超限给出 tooMany 与首个违规行号 2001', () => {
     const many = Array.from({ length: MAX_LINES + 1 }, (_, i) => `l${i}`);
     const r = validate(many, []);
     expect(r.old?.tooMany).toBe(true);
     expect(r.old?.lineNo).toBe(MAX_LINES + 1);
+  });
 
-    const longLast = [...Array.from({ length: MAX_LINES }, () => 'x'), 'y'.repeat(MAX_CODE_UNITS + 1)];
-    const r2 = validate(longLast, []);
-    expect(r2.old?.tooLong).toBe(true);
-    expect(r2.old?.lineNo).toBe(MAX_LINES + 1);
+  it('前 2000 行合法但第 2001 行本身超长时，仍按行数超限报第 2001 行', () => {
+    const longAt2001 = [...Array.from({ length: MAX_LINES }, () => 'x'), 'y'.repeat(MAX_CODE_UNITS + 1)];
+    const r = validate(longAt2001, []);
+    expect(r.old?.tooMany).toBe(true);
+    expect(r.old?.tooLong).toBe(false);
+    expect(r.old?.lineNo).toBe(MAX_LINES + 1);
+  });
+
+  it('超过 2000 行且更后的行超长时，不跳到后面的超长行，恒指第 2001 行', () => {
+    // 第 2005 行超长（用户报告的场景）
+    const lines = [...Array.from({ length: MAX_LINES + 4 }, (_, i) => `l${i}`)];
+    lines[MAX_LINES + 4] = 'z'.repeat(MAX_CODE_UNITS + 1);
+    const r = validate(lines, []);
+    expect(r.old?.tooMany).toBe(true);
+    expect(r.old?.lineNo).toBe(MAX_LINES + 1);
+  });
+
+  it('未超行数时（恰 2000 行）超长行仍按实际行号报告', () => {
+    const lines = Array.from({ length: MAX_LINES }, () => 'x');
+    lines[1999] = 'y'.repeat(MAX_CODE_UNITS + 1);
+    const r = validate(lines, []);
+    expect(r.old?.tooLong).toBe(true);
+    expect(r.old?.lineNo).toBe(MAX_LINES);
   });
 });

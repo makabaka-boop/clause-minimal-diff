@@ -17,11 +17,15 @@ EXPOSE 80
 HEALTHCHECK --interval=10s --timeout=3s CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1
 
 # ---- verify：一次性运行 Vitest + 构建 + Playwright ----
-FROM mcr.microsoft.com/playwright:v1.48.2-bookworm AS verify
+# 注意：Playwright 官方镜像基于 Ubuntu，仅提供 jammy/noble/focal 标签，
+# 不存在 bookworm 标签；用 jammy（含 Chromium 与系统依赖，amd64/arm64 均有）。
+FROM mcr.microsoft.com/playwright:v1.48.2-jammy AS verify
+# 以 root 运行，Chromium 由 playwright.config.ts 追加 --no-sandbox
+USER root
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi \
-  && npx playwright install chromium
+# 镜像已预装匹配版本的 Chromium，无需再执行 playwright install
+RUN npm ci
 COPY . .
 # Vitest 搜索/回溯 → tsc/vite 构建 → Playwright 重复行证据与失效交互
 CMD ["sh", "-c", "npm test && npm run build && npx playwright test"]
