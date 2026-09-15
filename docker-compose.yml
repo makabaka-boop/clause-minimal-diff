@@ -1,0 +1,17 @@
+services:
+  web:
+    build:
+      context: .
+      target: web
+    image: dual-column-collator:web
+    # 宿主端口可用 WEB_PORT 覆盖，例如：WEB_PORT=9000 docker compose up web
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+  verify:
+    build:
+      context: .
+      target: verify
+    image: dual-column-collator:verify
+    # 一次性服务：跑完 Vitest + 构建 + Playwright 即退出
+    command: ["sh", "-c", "npm test && npm run build && npx playwright test"]
